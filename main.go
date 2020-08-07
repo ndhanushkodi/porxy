@@ -3,13 +3,53 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"time"
+
+	"github.com/ndhanushkodi/porxy/config"
 )
 
+type Config struct {
+	Listeners []Listener `yaml:"listeners"`
+	Backends  []Backend  `yaml:"backends"`
+}
+
+type Listener struct {
+	Name    string `yaml:"name"`
+	Backend string `yaml:"backend"`
+	Address string `yaml:"address"`
+	Port    string `yaml:"port"`
+}
+
+type Backend struct {
+	Name string `yaml:"name"`
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
+}
+
 func main() {
-	// Listen on port 8000 for netcat client
-	// "nc localhost 8000"
-	l, err := net.Listen("tcp", ":8000")
+	rawconfig, err := ioutil.ReadFile("config.yaml")
+	if err != nil {
+		panic(err)
+	}
+	c := config.LoadConfig(rawconfig)
+
+	for _, listener := range c.Listeners {
+		go createListener(listener, c.GetBackend(listener.Backend))
+	}
+	for {
+		//TODO if all listeners exit, porxy could close
+		//TODO if porxy gets a signal, it should log it and close
+		//TODO bubble up errors in an error channel and log them and exit
+		time.Sleep(1 * time.Second)
+	}
+
+}
+
+func createListener(listener config.Listener, backend config.Backend) {
+	addressport := fmt.Sprintf("%s:%s", listener.Address, listener.Port)
+	l, err := net.Listen("tcp", addressport)
 	if err != nil {
 		panic(err)
 	}
@@ -18,15 +58,14 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, backend)
 	}
 }
 
 // handleConnection handles one connection from a client to server
-func handleConnection(clientconn net.Conn) {
-	// Connect to socat server listening on 1234
-	// "socat TCP-LISTEN:1234,crlf,reuseaddr,fork -"
-	serverconn, err := net.Dial("tcp", "127.0.0.1:1234")
+func handleConnection(clientconn net.Conn, backend config.Backend) {
+	addressport := fmt.Sprintf("%s:%s", backend.Host, backend.Port)
+	serverconn, err := net.Dial("tcp", addressport)
 	if err != nil {
 		panic(err)
 	}

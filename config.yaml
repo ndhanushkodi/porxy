@@ -1,0 +1,18 @@
+---
+listeners:
+  - name: moo
+    backend: foo
+    address: 0.0.0.0
+    port: 8000
+  - name: roo
+    backend: bar
+    address: 0.0.0.0
+    port: 7000
+
+backends:
+  - name: foo
+    host: localhost
+    port: 1234
+  - name: bar
+    host: localhost
+    port: 5555

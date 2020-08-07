@@ -3,11 +3,70 @@ porxy
 Proxies traffic
 
 ### Intent
-I'm using porxy as a learning project to better understand networking. The
+I'm using porxy as a learning project to better understand networking and
+connection handling. The
 changelog section describes each iteration of porxy, and the featureset it
 supports at that stage.
 
+### Usage
+1. Build the porxy binary
+`git clone https://github.com/ndhanushkodi/porxy`
+`cd porxy`
+`go build .`
+
+1. Create/Edit a configuration file called `config.yaml` in the same directory
+   as the binary. See [changelog #2](#2.-configurable-connections) for config
+   spec.
+
+1. Run clients to connect to the `listeners` in different terminal windows.
+
+Example TCP client:
+`nc localhost 8000`
+`nc localhost 7000`
+
+1. Run servers that the `backends` will connect to in different terminal windows
+
+Example TCP client:
+`socat TCP-LISTEN:1234,crlf,reuseaddr,fork -`
+`socat TCP-LISTEN:5555,crlf,reuseaddr,fork -`
+
+1. Proxy traffic between them
+`./porxy`
+
+1. Write data on the client and server sides and see the traffic get proxied
+
 ### Changelog
+---
+#### 2. Configurable connections
+Porxy can now be configured with a set of `listeners` and `backends`, for TCP
+connections.
+   Example config:
+   ```yaml
+    ---
+    listeners:
+      - name: moo
+        backend: foo
+        address: 0.0.0.0
+        port: 8000
+      - name: roo
+        backend: bar
+        address: 0.0.0.0
+        port: 7000
+
+    backends:
+      - name: foo
+        host: localhost
+        port: 1234
+      - name: bar
+        host: localhost
+        port: 5555
+   ```
+In this example, porxy will proxy traffic from port 8000 to a server on
+localhost:1234 and from port 7000 to a server on localhost:5555.
+
+The goal of this changeset was to just get configurable connections working, but
+it's becoming clear there needs to be a way to handle/log errors for individual
+connections, so that is likely to be the next changeset.
 ---
 #### 1. Single connection TCP Proxy
 Porxy listens for a TCP client connection on a hardcoded port. When porxy receives a
