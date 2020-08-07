@@ -27,5 +27,12 @@ Connection handling
 * When a server goes offline, the client should behave the same way it would if
   porxy didn't exist. The client side exits when it sends more data over the
   broken connection and receives no ACK from the server.
+
+##### Interestings
+[Waiting on readability for TCPConn](https://github.com/golang/go/issues/15735#issuecomment-266574151)
+[Non-blocking read on net.Conn](https://github.com/golang/go/issues/36973)
+[go mysql driver raw connection handling](https://github.com/go-sql-driver/mysql/blob/master/conncheck.go)
+[go async io library](https://github.com/xtaci/gaio)
+[Asynchronous system calls](https://thenewstack.io/how-io_uring-and-ebpf-will-revolutionize-programming-in-linux/)
 ---
 
