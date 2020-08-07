@@ -10,28 +10,37 @@ supports at that stage.
 
 ### Usage
 1. Build the porxy binary
-`git clone https://github.com/ndhanushkodi/porxy`
-`cd porxy`
-`go build .`
-
+   ```
+   git clone https://github.com/ndhanushkodi/porxy
+   cd porxy
+   go build .
+   ```
 1. Create/Edit a configuration file called `config.yaml` in the same directory
-   as the binary. See [changelog #2](#2.-configurable-connections) for config
+   as the binary. See [Changelog #2](#2-configurable-connections) for the config
    spec.
 
 1. Run clients to connect to the `listeners` in different terminal windows.
 
-Example TCP client:
-`nc localhost 8000`
-`nc localhost 7000`
+   Example TCP clients:
+   ```
+   nc localhost 8000
+   
+   nc localhost 7000
+   ```
 
-1. Run servers that the `backends` will connect to in different terminal windows
+1. Run servers that the `backends` will connect to in different terminal windows.
 
-Example TCP client:
-`socat TCP-LISTEN:1234,crlf,reuseaddr,fork -`
-`socat TCP-LISTEN:5555,crlf,reuseaddr,fork -`
+   Example TCP servers:
+   ```
+   socat TCP-LISTEN:1234,crlf,reuseaddr,fork -
+   
+   socat TCP-LISTEN:5555,crlf,reuseaddr,fork -
+   ```
 
 1. Proxy traffic between them
-`./porxy`
+   ```
+   ./porxy
+   ```
 
 1. Write data on the client and server sides and see the traffic get proxied
 
@@ -40,7 +49,7 @@ Example TCP client:
 #### 2. Configurable connections
 Porxy can now be configured with a set of `listeners` and `backends`, for TCP
 connections.
-   Example config:
+   Example supported config:
    ```yaml
     ---
     listeners:
@@ -62,11 +71,12 @@ connections.
         port: 5555
    ```
 In this example, porxy will proxy traffic from port 8000 to a server on
-localhost:1234 and from port 7000 to a server on localhost:5555.
+`localhost:1234` and from port 7000 to a server on `localhost:5555`.
 
 The goal of this changeset was to just get configurable connections working, but
 it's becoming clear there needs to be a way to handle/log errors for individual
 connections, so that is likely to be the next changeset.
+
 ---
 #### 1. Single connection TCP Proxy
 Porxy listens for a TCP client connection on a hardcoded port. When porxy receives a
@@ -88,10 +98,14 @@ Connection handling
   broken connection and receives no ACK from the server.
 
 ##### Interestings
-[Waiting on readability for TCPConn](https://github.com/golang/go/issues/15735#issuecomment-266574151)
-[Non-blocking read on net.Conn](https://github.com/golang/go/issues/36973)
-[go mysql driver raw connection handling](https://github.com/go-sql-driver/mysql/blob/master/conncheck.go)
-[go async io library](https://github.com/xtaci/gaio)
-[Asynchronous system calls](https://thenewstack.io/how-io_uring-and-ebpf-will-revolutionize-programming-in-linux/)
+The following github issues describe that reading from a `net.Conn` is blocking:
+* [Waiting on readability for TCPConn](https://github.com/golang/go/issues/15735#issuecomment-266574151)
+* [Non-blocking read on net.Conn](https://github.com/golang/go/issues/36973)
+
+These resources could be an interesting follow up exercise, to explore whether porxy performance improves using asynchronous syscalls to read/write from the socket, rather than using the net.Conn library.
+* [Asynchronous system calls](https://thenewstack.io/how-io_uring-and-ebpf-will-revolutionize-programming-in-linux/)
+* [go mysql driver raw connection handling](https://github.com/go-sql-driver/mysql/blob/master/conncheck.go)
+* [go async io library](https://github.com/xtaci/gaio)
+
 ---
 
