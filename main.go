@@ -10,24 +10,6 @@ import (
 	"github.com/ndhanushkodi/porxy/config"
 )
 
-type Config struct {
-	Listeners []Listener `yaml:"listeners"`
-	Backends  []Backend  `yaml:"backends"`
-}
-
-type Listener struct {
-	Name    string `yaml:"name"`
-	Backend string `yaml:"backend"`
-	Address string `yaml:"address"`
-	Port    string `yaml:"port"`
-}
-
-type Backend struct {
-	Name string `yaml:"name"`
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
-}
-
 func main() {
 	rawconfig, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
