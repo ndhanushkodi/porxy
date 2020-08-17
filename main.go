@@ -40,6 +40,10 @@ func main() {
 
 }
 
+// createListener starts listening on the configured address and port, and
+// accepts incoming connections. Each accepted connection is then handled.
+// TODO: consider the listener lifecycle
+// TODO: consider sending clients to a different backend if one goes down
 func createListener(listener config.Listener, backend config.Backend, errs chan error) {
 	addressport := fmt.Sprintf("%s:%s", listener.Address, listener.Port)
 	l, err := net.Listen("tcp", addressport)
