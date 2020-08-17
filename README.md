@@ -46,6 +46,18 @@ supports at that stage.
 
 ### Changelog
 ---
+#### 3. Error handling
+There are no longer panics when handling errors.
+
+When an error occurs during the Listen and Accept portion of creating a
+listener, or when Dialing the backend, those are sent to an error channel and
+logged, but porxy continues to stay up.
+
+When an error occurs in the proxying of a connection, those are sent to a
+different error channel and logged, porxy continues to stay up, AND both sides
+of that particular connection are closed.
+
+---
 #### 2. Configurable connections
 Porxy can now be configured with a set of `listeners` and `backends`, for TCP
 connections.

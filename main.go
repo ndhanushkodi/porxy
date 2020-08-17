@@ -5,7 +5,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/ndhanushkodi/porxy/config"
 )
@@ -17,49 +19,61 @@ func main() {
 	}
 	c := config.LoadConfig(rawconfig)
 
+	errs := make(chan error)
 	for _, listener := range c.Listeners {
-		go createListener(listener, c.GetBackend(listener.Backend))
+		go createListener(listener, c.GetBackend(listener.Backend), errs)
 	}
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	for {
-		//TODO if all listeners exit, porxy could close
-		//TODO if porxy gets a signal, it should log it and close
-		//TODO bubble up errors in an error channel and log them and exit
-		time.Sleep(1 * time.Second)
+		select {
+		case err := <-errs:
+			fmt.Printf("Error (listen/handle): %+v\n", err)
+		case sig := <-sigs:
+			fmt.Println(sig)
+			fmt.Println("Exiting porxy")
+			os.Exit(1)
+		}
 	}
 
 }
 
-func createListener(listener config.Listener, backend config.Backend) {
+func createListener(listener config.Listener, backend config.Backend, errs chan error) {
 	addressport := fmt.Sprintf("%s:%s", listener.Address, listener.Port)
 	l, err := net.Listen("tcp", addressport)
 	if err != nil {
-		panic(err)
+		errs <- err
+		return
 	}
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			panic(err)
+			errs <- err
+			return
 		}
-		go handleConnection(conn, backend)
+		go handleConnection(conn, backend, errs)
 	}
 }
 
 // handleConnection handles one connection from a client to server
-func handleConnection(clientconn net.Conn, backend config.Backend) {
+func handleConnection(clientconn net.Conn, backend config.Backend, errs chan error) {
 	addressport := fmt.Sprintf("%s:%s", backend.Host, backend.Port)
 	serverconn, err := net.Dial("tcp", addressport)
 	if err != nil {
-		panic(err)
+		errs <- err
+		return
 	}
 
-	errChan := make(chan error, 1)
-	go proxyConnection(serverconn, clientconn, errChan)
-	go proxyConnection(clientconn, serverconn, errChan)
+	proxyErrs := make(chan error, 1)
+	go proxyConnection(serverconn, clientconn, proxyErrs)
+	go proxyConnection(clientconn, serverconn, proxyErrs)
 
 	// If either side of the connection has an error, close both sides
 	// and log the error. Clients would then be able to retry connections
-	err = <-errChan
-	fmt.Println(err)
+	err = <-proxyErrs
+	fmt.Printf("Error in proxying connection, closing both sides of connection: %+v\n", err)
 	serverconn.Close()
 	clientconn.Close()
 }
@@ -67,7 +81,7 @@ func handleConnection(clientconn net.Conn, backend config.Backend) {
 // proxyConnection handles reading and writing in one direction,
 // either reading from the client and writing to the server
 // or reading from the server and writing to the client.
-func proxyConnection(connA, connB net.Conn, errChan chan error) {
+func proxyConnection(connA, connB net.Conn, errs chan error) {
 	for {
 		aBytes := make([]byte, 1024)
 		_, err := connA.Read(aBytes)
@@ -75,7 +89,7 @@ func proxyConnection(connA, connB net.Conn, errChan chan error) {
 			if err == io.EOF {
 				fmt.Printf("%s -> %s closed connection\n", connA.LocalAddr().String(), connA.RemoteAddr().String())
 			}
-			errChan <- err
+			errs <- err
 			return
 		}
 		_, err = connB.Write(aBytes)
@@ -83,7 +97,7 @@ func proxyConnection(connA, connB net.Conn, errChan chan error) {
 			if err == io.EOF {
 				fmt.Printf("%s -> %s closed connection\n", connB.LocalAddr().String(), connB.RemoteAddr().String())
 			}
-			errChan <- err
+			errs <- err
 			return
 		}
 	}
