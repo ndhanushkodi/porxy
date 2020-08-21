@@ -60,6 +60,7 @@ func createListener(listener config.Listener, backend config.Backend, errs chan 
 		conn, err := l.Accept()
 		if err != nil {
 			errs <- err
+			conn.Close()
 			return
 		}
 		go handleConnection(conn, backend, errs)
@@ -72,6 +73,7 @@ func handleConnection(clientconn net.Conn, backend config.Backend, errs chan err
 	serverconn, err := net.Dial("tcp", addressport)
 	if err != nil {
 		errs <- err
+		clientconn.Close()
 		return
 	}
 
