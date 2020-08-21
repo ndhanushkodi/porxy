@@ -19,10 +19,7 @@ func main() {
 	}
 	c := config.LoadConfig(rawconfig)
 
-	errs := make(chan error)
-	for _, listener := range c.Listeners {
-		go createListener(listener, c.GetBackend(listener.Backend), errs)
-	}
+	errs := configureProxy(c)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -38,6 +35,14 @@ func main() {
 		}
 	}
 
+}
+
+func configureProxy(c config.Config) chan error {
+	errs := make(chan error)
+	for _, listener := range c.Listeners {
+		go createListener(listener, c.GetBackend(listener.Backend), errs)
+	}
+	return errs
 }
 
 // createListener starts listening on the configured address and port, and
